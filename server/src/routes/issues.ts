@@ -17,7 +17,6 @@ import {
   checkoutIssueSchema,
   createChildIssueSchema,
   createIssueSchema,
-  resolveCreateIssueStatusDefault,
   feedbackTargetTypeSchema,
   feedbackTraceStatusSchema,
   feedbackVoteValueSchema,
@@ -40,6 +39,7 @@ import {
   type SuccessfulRunHandoffState,
 } from "@paperclipai/shared";
 import { trackAgentTaskCompleted } from "@paperclipai/shared/telemetry";
+import { resolveCreateIssueStatusDefault } from "@paperclipai/shared/validators/issue";
 import { getTelemetryClient } from "../telemetry.js";
 import type { StorageService } from "../storage/types.js";
 import { validate } from "../middleware/validate.js";

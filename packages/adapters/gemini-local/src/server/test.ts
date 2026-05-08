@@ -191,7 +191,7 @@ export async function testEnvironment(
         args,
         {
           cwd,
-          env: targetIsRemote ? env : runtimeEnv,
+          env: targetIsRemote ? env : Object.fromEntries(Object.entries(runtimeEnv).filter((e): e is [string, string] => e[1] !== undefined)),
           timeoutSec: helloProbeTimeoutSec,
           graceSec: 5,
           onLog: async () => { },

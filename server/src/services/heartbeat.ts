@@ -9519,5 +9519,95 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         .limit(1);
       return run ?? null;
     },
+
+    retryScheduledRetryNow: async (input: {
+      issueId: string;
+      actor?: { actorType?: string; actorId?: string | null };
+    }) => {
+      const retryRunColumns = {
+        id: heartbeatRuns.id,
+        status: heartbeatRuns.status,
+        agentId: heartbeatRuns.agentId,
+        retryOfRunId: heartbeatRuns.retryOfRunId,
+        scheduledRetryAt: heartbeatRuns.scheduledRetryAt,
+        scheduledRetryAttempt: heartbeatRuns.scheduledRetryAttempt,
+        scheduledRetryReason: heartbeatRuns.scheduledRetryReason,
+        errorCode: heartbeatRuns.errorCode,
+        wakeupRequestId: heartbeatRuns.wakeupRequestId,
+        companyId: heartbeatRuns.companyId,
+        contextSnapshot: heartbeatRuns.contextSnapshot,
+      } as const;
+
+      const makeRunSummary = (run: { id: string; status: string; agentId: string; retryOfRunId: string | null; scheduledRetryAt: Date | null; scheduledRetryAttempt: number | null; scheduledRetryReason: string | null; errorCode: string | null }) => ({
+        runId: run.id,
+        status: run.status,
+        agentId: run.agentId,
+        retryOfRunId: run.retryOfRunId,
+        scheduledRetryAt: run.scheduledRetryAt?.toISOString() ?? null,
+        scheduledRetryAttempt: run.scheduledRetryAttempt,
+        scheduledRetryReason: run.scheduledRetryReason,
+        errorCode: run.errorCode,
+      });
+
+      const now = new Date();
+
+      const run = await db
+        .select(retryRunColumns)
+        .from(heartbeatRuns)
+        .where(
+          and(
+            inArray(heartbeatRuns.status, ["scheduled_retry", "queued"]),
+            sql`${heartbeatRuns.contextSnapshot} ->> 'issueId' = ${input.issueId}`,
+            sql`${heartbeatRuns.retryOfRunId} IS NOT NULL`,
+          ),
+        )
+        .orderBy(asc(heartbeatRuns.scheduledRetryAt), asc(heartbeatRuns.createdAt))
+        .limit(1)
+        .then((rows) => rows[0] ?? null);
+
+      if (!run) {
+        return { outcome: "no_scheduled_retry" as const, message: "No scheduled retry found for this issue", scheduledRetry: null };
+      }
+
+      if (run.status === "queued") {
+        return { outcome: "already_promoted" as const, message: "Scheduled retry has already been promoted to the queue", scheduledRetry: makeRunSummary(run) };
+      }
+
+      const agent = await db.select().from(agents).where(eq(agents.id, run.agentId)).then((rows) => rows[0] ?? null);
+      if (agent) {
+        const contextSnapshot = (run.contextSnapshot as Record<string, unknown>) ?? {};
+        const gate = await evaluateScheduledRetryGate({ run: run as typeof heartbeatRuns.$inferSelect, agent, contextSnapshot });
+        if (!gate.allowed) {
+          const cancelled = await db
+            .update(heartbeatRuns)
+            .set({ status: "cancelled", finishedAt: now, error: gate.reason, errorCode: gate.errorCode, updatedAt: now })
+            .where(and(eq(heartbeatRuns.id, run.id), eq(heartbeatRuns.status, "scheduled_retry")))
+            .returning()
+            .then((rows) => rows[0] ?? null);
+          if (run.wakeupRequestId) {
+            await db.update(agentWakeupRequests).set({ status: "cancelled", finishedAt: now, error: gate.reason, updatedAt: now }).where(eq(agentWakeupRequests.id, run.wakeupRequestId));
+          }
+          const summary = cancelled ? makeRunSummary(cancelled) : makeRunSummary({ ...run, status: "cancelled", errorCode: gate.errorCode });
+          return { outcome: "gate_suppressed" as const, message: gate.reason, scheduledRetry: summary };
+        }
+      }
+
+      const promoted = await db
+        .update(heartbeatRuns)
+        .set({ status: "queued", scheduledRetryAt: null, updatedAt: now })
+        .where(and(eq(heartbeatRuns.id, run.id), eq(heartbeatRuns.status, "scheduled_retry")))
+        .returning()
+        .then((rows) => rows[0] ?? null);
+
+      if (!promoted) {
+        return { outcome: "already_promoted" as const, message: "Scheduled retry has already been promoted to the queue", scheduledRetry: makeRunSummary(run) };
+      }
+
+      if (promoted.wakeupRequestId) {
+        await db.update(agentWakeupRequests).set({ status: "queued", updatedAt: now }).where(eq(agentWakeupRequests.id, promoted.wakeupRequestId));
+      }
+
+      return { outcome: "promoted" as const, message: "Scheduled retry promoted to queue", scheduledRetry: makeRunSummary(promoted) };
+    },
   };
 }
