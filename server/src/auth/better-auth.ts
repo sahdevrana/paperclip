@@ -129,7 +129,10 @@ export function createBetterAuthInstance(db: Db, config: Config, trustedOrigins:
         sendVerificationOnSignUp: false,
         sendVerificationOTP: async ({ email, otp }) => {
           const emailContent = buildOtpEmail({ otp, email });
-          await sendMail({ to: email, ...emailContent });
+          const sent = await sendMail({ to: email, ...emailContent });
+          if (!sent) {
+            throw new Error("Email delivery is not configured on this server");
+          }
         },
       }),
     ],
