@@ -50,6 +50,7 @@ export function CompanyInvites() {
   const { pushToast } = useToast();
   const queryClient = useQueryClient();
   const [humanRole, setHumanRole] = useState<"owner" | "admin" | "operator" | "viewer">("operator");
+  const [inviteEmail, setInviteEmail] = useState("");
   const [latestInviteUrl, setLatestInviteUrl] = useState<string | null>(null);
   const [latestInviteCopied, setLatestInviteCopied] = useState(false);
 
@@ -108,21 +109,31 @@ export function CompanyInvites() {
   );
 
   const createInviteMutation = useMutation({
-    mutationFn: () =>
-      accessApi.createCompanyInvite(selectedCompanyId!, {
+    mutationFn: () => {
+      const trimmedEmail = inviteEmail.trim();
+      return accessApi.createCompanyInvite(selectedCompanyId!, {
         allowedJoinTypes: "human",
         humanRole,
         agentMessage: null,
-      }),
+        invitedEmail: trimmedEmail.length > 0 ? trimmedEmail : null,
+      });
+    },
     onSuccess: async (invite) => {
       setLatestInviteUrl(invite.inviteUrl);
       setLatestInviteCopied(false);
+      const trimmedEmail = inviteEmail.trim();
       const copied = await copyInviteUrl(invite.inviteUrl);
 
       await queryClient.invalidateQueries({ queryKey: inviteHistoryQueryKey });
       pushToast({
         title: "Invite created",
-        body: copied ? "Invite ready below and copied to clipboard." : "Invite ready below.",
+        body: trimmedEmail
+          ? copied
+            ? `Invite link copied. Email sent to ${trimmedEmail}.`
+            : `Invite ready below. Email sent to ${trimmedEmail}.`
+          : copied
+            ? "Invite ready below and copied to clipboard."
+            : "Invite ready below.",
         tone: "success",
       });
     },
@@ -226,6 +237,23 @@ export function CompanyInvites() {
 
         <div className="rounded-lg border border-border px-4 py-3 text-sm text-muted-foreground">
           Each invite link is single-use. The first successful use consumes the link and creates or reuses the matching join request before approval.
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="invite-email" className="text-sm font-medium">
+            Send invite to email <span className="text-muted-foreground font-normal">(optional)</span>
+          </label>
+          <input
+            id="invite-email"
+            type="email"
+            className="w-full max-w-sm rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground/40 placeholder:text-muted-foreground"
+            placeholder="person@example.com"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            If provided, an invite email is sent automatically. Requires SMTP to be configured.
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

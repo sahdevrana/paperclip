@@ -303,6 +303,7 @@ export function InviteLandingPage() {
   const shouldAutoAcceptHumanInvite =
     Boolean(sessionQuery.data) &&
     !showsAgentForm &&
+    !otpStep &&
     invite?.inviteType !== "bootstrap_ceo" &&
     !inviteJoinRequestStatus &&
     !isCheckingExistingMembership &&
