@@ -21,7 +21,8 @@ export async function testEnvironment(
 
   const rawBaseUrl = asString(config.baseUrl, DEFAULT_OLLAMA_BASE_URL).trim().replace(/\/$/, "");
   const baseUrl = rawBaseUrl || DEFAULT_OLLAMA_BASE_URL;
-  const apiKey = asString(config.apiKey, "").trim();
+  const configApiKey = asString(config.apiKey, "").trim();
+  const apiKey = configApiKey || process.env.OLLAMA_API_KEY?.trim() || "";
   const model = asString(config.model, DEFAULT_OLLAMA_MODEL).trim() || DEFAULT_OLLAMA_MODEL;
 
   if (!apiKey) {
@@ -29,7 +30,7 @@ export async function testEnvironment(
       code: "ollama_api_key_missing",
       level: "warn",
       message: "No API key configured",
-      hint: "Set the API key field to any non-empty string (e.g. \"ollama\") if your instance does not require authentication.",
+      hint: 'Set the API key field or the OLLAMA_API_KEY environment variable. Use any non-empty value (e.g. "ollama") if your instance does not require authentication.',
     });
   }
 

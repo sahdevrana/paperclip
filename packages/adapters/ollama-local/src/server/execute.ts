@@ -8,7 +8,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
 
   const rawBaseUrl = asString(config.baseUrl, DEFAULT_OLLAMA_BASE_URL).trim().replace(/\/$/, "");
   const baseUrl = rawBaseUrl || DEFAULT_OLLAMA_BASE_URL;
-  const apiKey = asString(config.apiKey, "ollama").trim() || "ollama";
+  const configApiKey = asString(config.apiKey, "").trim();
+  const apiKey = configApiKey || process.env.OLLAMA_API_KEY?.trim() || "ollama";
   const model = asString(config.model, DEFAULT_OLLAMA_MODEL).trim() || DEFAULT_OLLAMA_MODEL;
 
   // Merge Ollama connection vars into the env config so codex execute
