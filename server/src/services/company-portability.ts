@@ -58,6 +58,7 @@ import { forbidden, notFound, unprocessable } from "../errors.js";
 import { ghFetch, gitHubApiBase, resolveRawGitHubUrl } from "./github-fetch.js";
 import type { StorageService } from "../storage/types.js";
 import { accessService } from "./access.js";
+import { grantsForHumanRole } from "./company-member-roles.js";
 import { agentService } from "./agents.js";
 import { agentInstructionsService } from "./agent-instructions.js";
 import { assetService } from "./assets.js";
@@ -589,7 +590,7 @@ const COMPANY_LOGO_CONTENT_TYPE_EXTENSIONS: Record<string, string> = {
 const COMPANY_LOGO_FILE_NAME = "company-logo";
 
 const RUNTIME_DEFAULT_RULES: Array<{ path: string[]; value: unknown }> = [
-  { path: ["heartbeat", "cooldownSec"], value: 10 },
+  { path: ["heartbeat", "cooldownSec"], value: 30 },
   { path: ["heartbeat", "intervalSec"], value: 3600 },
   { path: ["heartbeat", "wakeOnOnDemand"], value: true },
   { path: ["heartbeat", "wakeOnAssignment"], value: true },
@@ -4118,7 +4119,17 @@ export function companyPortabilityService(db: Db, storage?: StorageService) {
       if (mode === "agent_safe" && options?.sourceCompanyId) {
         await access.copyActiveUserMemberships(options.sourceCompanyId, created.id);
       } else {
-        await access.ensureMembership(created.id, "user", actorUserId ?? "board", "owner", "active");
+        const ownerId = actorUserId ?? "board";
+        await access.ensureMembership(created.id, "user", ownerId, "owner", "active");
+        if (actorUserId) {
+          await access.setPrincipalGrants(
+            created.id,
+            "user",
+            actorUserId,
+            grantsForHumanRole("owner"),
+            null
+          );
+        }
       }
       targetCompany = created;
       companyAction = "created";

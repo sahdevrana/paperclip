@@ -16,7 +16,14 @@ import {
   issues,
   issueComments,
 } from "@paperclipai/db";
-import { AGENT_DEFAULT_MAX_CONCURRENT_RUNS, isUuidLike, normalizeAgentUrlKey } from "@paperclipai/shared";
+import {
+  AGENT_DEFAULT_MAX_CONCURRENT_RUNS,
+  AGENT_DEFAULT_ADVANCE_COOLDOWN_SEC,
+  AGENT_DEFAULT_CONTINUATION_ATTEMPTS,
+  AGENT_DEFAULT_CONTINUATION_DELAY_SEC,
+  isUuidLike,
+  normalizeAgentUrlKey,
+} from "@paperclipai/shared";
 import { conflict, notFound, unprocessable } from "../errors.js";
 import { normalizeAgentPermissions } from "./agent-permissions.js";
 import { REDACTED_EVENT_VALUE, sanitizeRecord } from "../redaction.js";
@@ -131,7 +138,25 @@ function normalizeRuntimeConfigForNewAgent(runtimeConfig: unknown): Record<strin
   if (parseFiniteNumberLike(heartbeat.maxConcurrentRuns) == null) {
     heartbeat.maxConcurrentRuns = AGENT_DEFAULT_MAX_CONCURRENT_RUNS;
   }
+  if (parseFiniteNumberLike(heartbeat.cooldownSec) == null) {
+    heartbeat.cooldownSec = AGENT_DEFAULT_ADVANCE_COOLDOWN_SEC;
+  }
   normalizedRuntimeConfig.heartbeat = heartbeat;
+
+  const continuation = isPlainRecord(normalizedRuntimeConfig.maxTurnContinuation)
+    ? { ...normalizedRuntimeConfig.maxTurnContinuation }
+    : {};
+  if (continuation.enabled === undefined) {
+    continuation.enabled = true;
+  }
+  if (parseFiniteNumberLike(continuation.maxAttempts) == null) {
+    continuation.maxAttempts = AGENT_DEFAULT_CONTINUATION_ATTEMPTS;
+  }
+  if (parseFiniteNumberLike(continuation.delayMs) == null) {
+    continuation.delayMs = AGENT_DEFAULT_CONTINUATION_DELAY_SEC * 1000;
+  }
+  normalizedRuntimeConfig.maxTurnContinuation = continuation;
+
   return normalizedRuntimeConfig;
 }
 

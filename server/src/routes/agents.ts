@@ -8,6 +8,10 @@ import {
   agentSkillSyncSchema,
   agentMineInboxQuerySchema,
   AGENT_DEFAULT_MAX_CONCURRENT_RUNS,
+  AGENT_DEFAULT_INTERRUPT_GRACE_PERIOD_SEC,
+  AGENT_DEFAULT_ADVANCE_COOLDOWN_SEC,
+  AGENT_DEFAULT_CONTINUATION_ATTEMPTS,
+  AGENT_DEFAULT_CONTINUATION_DELAY_SEC,
   createAgentKeySchema,
   createAgentHireSchema,
   createAgentSchema,
@@ -883,8 +887,25 @@ export function agentRoutes(
     if (parseNumberLike(heartbeat.maxConcurrentRuns) == null) {
       heartbeat.maxConcurrentRuns = AGENT_DEFAULT_MAX_CONCURRENT_RUNS;
     }
+    if (parseNumberLike(heartbeat.cooldownSec) == null) {
+      heartbeat.cooldownSec = AGENT_DEFAULT_ADVANCE_COOLDOWN_SEC;
+    }
 
     normalizedRuntimeConfig.heartbeat = heartbeat;
+
+    const parsedContinuation = asRecord(normalizedRuntimeConfig.maxTurnContinuation);
+    const continuation = parsedContinuation ? { ...parsedContinuation } : {};
+    if (parseBooleanLike(continuation.enabled) == null) {
+      continuation.enabled = true;
+    }
+    if (parseNumberLike(continuation.maxAttempts) == null) {
+      continuation.maxAttempts = AGENT_DEFAULT_CONTINUATION_ATTEMPTS;
+    }
+    if (parseNumberLike(continuation.delayMs) == null) {
+      continuation.delayMs = AGENT_DEFAULT_CONTINUATION_DELAY_SEC * 1000;
+    }
+    normalizedRuntimeConfig.maxTurnContinuation = continuation;
+
     return normalizedRuntimeConfig;
   }
 
@@ -1001,6 +1022,9 @@ export function agentRoutes(
     adapterConfig: Record<string, unknown>,
   ): Record<string, unknown> {
     const next = { ...adapterConfig };
+    if (parseNumberLike(next.graceSec) == null) {
+      next.graceSec = AGENT_DEFAULT_INTERRUPT_GRACE_PERIOD_SEC;
+    }
     if (adapterType === "acpx_local") {
       if (!asNonEmptyString(next.agent)) {
         next.agent = DEFAULT_ACPX_LOCAL_AGENT;

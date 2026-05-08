@@ -3403,7 +3403,7 @@ export function accessRoutes(
               }
             )
           : null;
-      const created = !inviteAlreadyAccepted
+      let created = !inviteAlreadyAccepted
         ? existingHumanJoinRequest
           ? await db.transaction(async (tx) => {
               await tx
@@ -3487,6 +3487,58 @@ export function accessRoutes(
 
       if (!created) {
         throw conflict("Join request not found");
+      }
+
+      // Auto-approve human invite accepts immediately so the user is added to
+      // the company without requiring a manual admin approval step.
+      // Also runs when an existing approved join request was reused but the user
+      // no longer has active membership (e.g. membership was revoked).
+      if (requestType === "human" && (created.status === "pending_approval" || created.status === "approved")) {
+        const requestingUserId = created.requestingUserId;
+        if (requestingUserId) {
+          const membershipRole = resolveHumanInviteRole(
+            invite.defaultsPayload as Record<string, unknown> | null,
+          );
+          await access.ensureMembership(
+            companyId,
+            "user",
+            requestingUserId,
+            membershipRole,
+            "active"
+          );
+          const grants = humanJoinGrantsFromDefaults(
+            invite.defaultsPayload as Record<string, unknown> | null,
+            membershipRole
+          );
+          await access.setPrincipalGrants(
+            companyId,
+            "user",
+            requestingUserId,
+            grants,
+            req.actor.userId ?? null
+          );
+          if (created.status === "pending_approval") {
+            await db
+              .update(joinRequests)
+              .set({
+                status: "approved",
+                approvedByUserId: req.actor.userId ?? "invite-auto",
+                approvedAt: new Date(),
+                updatedAt: new Date()
+              })
+              .where(eq(joinRequests.id, created.id));
+            created = { ...created, status: "approved", approvedAt: new Date() };
+          }
+          await logActivity(db, {
+            companyId,
+            actorType: "user",
+            actorId: req.actor.userId ?? "board",
+            action: "join.approved",
+            entityType: "join_request",
+            entityId: created.id,
+            details: { requestType, autoApproved: true }
+          });
+        }
       }
 
       if (

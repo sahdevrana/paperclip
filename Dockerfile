@@ -34,7 +34,7 @@ COPY packages/plugins/sdk/package.json packages/plugins/sdk/
 COPY --parents packages/plugins/sandbox-providers/./*/package.json packages/plugins/sandbox-providers/
 COPY packages/plugins/paperclip-plugin-fake-sandbox/package.json packages/plugins/paperclip-plugin-fake-sandbox/
 COPY patches/ patches/
-
+RUN npm install -g @google/gemini-cli
 RUN pnpm install --frozen-lockfile
 
 FROM base AS build

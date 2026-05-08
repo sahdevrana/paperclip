@@ -5,13 +5,13 @@ export const label = "Gemini CLI (local)";
 
 export const SANDBOX_INSTALL_COMMAND = "npm install -g @google/gemini-cli";
 
-export const DEFAULT_GEMINI_LOCAL_MODEL = "auto";
+export const DEFAULT_GEMINI_LOCAL_MODEL = "gemini-2.5-flash-lite";
 
 export const models = [
-  { id: DEFAULT_GEMINI_LOCAL_MODEL, label: "Auto" },
+  { id: DEFAULT_GEMINI_LOCAL_MODEL, label: "Gemini 2.5 Flash Lite (default)" },
+  { id: "auto", label: "Auto" },
   { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
   { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-  { id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
   { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
   { id: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite" },
 ];
@@ -46,7 +46,7 @@ Core fields:
 - cwd (string, optional): default absolute working directory fallback for the agent process (created if missing when possible)
 - instructionsFilePath (string, optional): absolute path to a markdown instructions file prepended to the run prompt
 - promptTemplate (string, optional): run prompt template
-- model (string, optional): Gemini model id. Defaults to auto.
+- model (string, optional): Gemini model id. Defaults to gemini-2.5-flash-lite.
 - sandbox (boolean, optional): run in sandbox mode (default: false, passes --sandbox=none)
 - command (string, optional): defaults to "gemini"
 - extraArgs (string[], optional): additional CLI args

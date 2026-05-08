@@ -12,6 +12,10 @@ export {
   AGENT_ROLES,
   AGENT_ROLE_LABELS,
   AGENT_DEFAULT_MAX_CONCURRENT_RUNS,
+  AGENT_DEFAULT_INTERRUPT_GRACE_PERIOD_SEC,
+  AGENT_DEFAULT_ADVANCE_COOLDOWN_SEC,
+  AGENT_DEFAULT_CONTINUATION_ATTEMPTS,
+  AGENT_DEFAULT_CONTINUATION_DELAY_SEC,
   WORKSPACE_BRANCH_ROUTINE_VARIABLE,
   MODEL_PROFILE_KEYS,
   AGENT_ICON_NAMES,
@@ -371,10 +375,6 @@ export type {
   IssueProductivityReviewTrigger,
   SuccessfulRunHandoffState,
   SuccessfulRunHandoffStateKind,
-  IssueScheduledRetry,
-  IssueScheduledRetryStatus,
-  IssueRetryNowOutcome,
-  IssueRetryNowResponse,
   IssueReferenceSource,
   IssueRelatedWorkItem,
   IssueRelatedWorkSummary,
@@ -437,6 +437,7 @@ export type {
   IssueTreePreviewRun,
   IssueTreePreviewTotals,
   IssueTreePreviewWarning,
+  IssueScheduledRetry,
   Goal,
   Approval,
   ApprovalComment,
@@ -719,9 +720,7 @@ export {
   COMPANY_SEARCH_MAX_TOKENS,
   type CompanySearchQuery,
   createIssueSchema,
-  createIssueInputSchema,
   createChildIssueSchema,
-  resolveCreateIssueStatusDefault,
   createIssueLabelSchema,
   updateIssueSchema,
   issueExecutionPolicySchema,
@@ -966,6 +965,13 @@ export {
   type SetPluginState,
   type ListPluginState,
 } from "./validators/index.js";
+
+export {
+  type IssueRetryNowOutcome,
+  type IssueRetryNowResponse,
+} from "./issue-retry.js";
+
+export { resolveCreateIssueStatusDefault } from "./issue-status.js";
 
 export { API_PREFIX, API } from "./api.js";
 export { normalizeAgentUrlKey, deriveAgentUrlKey, isUuidLike } from "./agent-url-key.js";

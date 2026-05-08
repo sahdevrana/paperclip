@@ -7,7 +7,11 @@ import type {
   EnvBinding,
   Environment,
 } from "@paperclipai/shared";
-import { AGENT_DEFAULT_MAX_CONCURRENT_RUNS, supportedEnvironmentDriversForAdapter } from "@paperclipai/shared";
+import {
+  AGENT_DEFAULT_MAX_CONCURRENT_RUNS,
+  AGENT_DEFAULT_ADVANCE_COOLDOWN_SEC,
+  supportedEnvironmentDriversForAdapter,
+} from "@paperclipai/shared";
 import type { AdapterModel } from "../api/agents";
 import { agentsApi } from "../api/agents";
 import { environmentsApi } from "../api/environments";
@@ -177,9 +181,9 @@ const claudeThinkingEffortOptions = [
   { id: "high", label: "High" },
 ] as const;
 
-const MAX_TURN_CONTINUATION_DEFAULT_MAX_ATTEMPTS = 2;
+const MAX_TURN_CONTINUATION_DEFAULT_MAX_ATTEMPTS = 1;
 const MAX_TURN_CONTINUATION_MAX_ATTEMPTS_CAP = 10;
-const MAX_TURN_CONTINUATION_DEFAULT_DELAY_SEC = 1;
+const MAX_TURN_CONTINUATION_DEFAULT_DELAY_SEC = 5;
 const MAX_TURN_CONTINUATION_MAX_DELAY_SEC = 300;
 
 function clampInteger(value: number, min: number, max: number) {
@@ -588,7 +592,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
     const cheap = (profiles.cheap ?? {}) as Record<string, unknown>;
     const cheapAdapterConfig = (cheap.adapterConfig ?? {}) as Record<string, unknown>;
     return {
-      enabled: cheap.enabled !== false,
+      enabled: Boolean(profiles.cheap) && cheap.enabled !== false,
       model: typeof cheapAdapterConfig.model === "string" ? cheapAdapterConfig.model : "",
     };
   }, [runtimeConfig]);
@@ -1234,7 +1238,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                   value={eff(
                     "heartbeat",
                     "cooldownSec",
-                    Number(heartbeat.cooldownSec ?? 10),
+                    Number(heartbeat.cooldownSec ?? AGENT_DEFAULT_ADVANCE_COOLDOWN_SEC),
                   )}
                   onCommit={(v) => mark("heartbeat", "cooldownSec", v)}
                   immediate

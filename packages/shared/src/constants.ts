@@ -72,7 +72,11 @@ export const AGENT_ROLE_LABELS: Record<AgentRole, string> = {
   general: "General",
 };
 
-export const AGENT_DEFAULT_MAX_CONCURRENT_RUNS = 20;
+export const AGENT_DEFAULT_MAX_CONCURRENT_RUNS = 4;
+export const AGENT_DEFAULT_INTERRUPT_GRACE_PERIOD_SEC = 20;
+export const AGENT_DEFAULT_ADVANCE_COOLDOWN_SEC = 30;
+export const AGENT_DEFAULT_CONTINUATION_ATTEMPTS = 1;
+export const AGENT_DEFAULT_CONTINUATION_DELAY_SEC = 5;
 export const WORKSPACE_BRANCH_ROUTINE_VARIABLE = "workspaceBranch";
 
 export const MODEL_PROFILE_KEYS = ["cheap"] as const;

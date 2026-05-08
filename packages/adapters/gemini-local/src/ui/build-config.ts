@@ -66,7 +66,9 @@ export function buildGeminiLocalConfig(v: CreateConfigValues): Record<string, un
     }
   }
   if (Object.keys(env).length > 0) ac.env = env;
-  ac.sandbox = !v.dangerouslyBypassSandbox;
+  // Sandbox disabled: Gemini CLI --sandbox requires bubblewrap/seccomp which
+  // is unavailable in Docker without --privileged.
+  ac.sandbox = false;
 
   if (v.command) ac.command = v.command;
   if (v.extraArgs) ac.extraArgs = parseCommaArgs(v.extraArgs);
