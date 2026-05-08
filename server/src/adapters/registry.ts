@@ -89,6 +89,16 @@ import {
   agentConfigurationDoc as openclawGatewayAgentConfigurationDoc,
   models as openclawGatewayModels,
 } from "@paperclipai/adapter-openclaw-gateway";
+import {
+  execute as ollamaExecute,
+  testEnvironment as ollamaTestEnvironment,
+  listOllamaModels,
+} from "@paperclipai/adapter-ollama-local/server";
+import {
+  OLLAMA_BUILTIN_MODELS as ollamaModels,
+  modelProfiles as ollamaModelProfiles,
+  agentConfigurationDoc as ollamaAgentConfigurationDoc,
+} from "@paperclipai/adapter-ollama-local";
 import { listCodexModels, refreshCodexModels } from "./codex-models.js";
 import { listCursorModels } from "./cursor-models.js";
 import {
@@ -439,6 +449,20 @@ const hermesLocalAdapter: ServerAdapterModule = {
   detectModel: () => detectModelFromHermes(),
 };
 
+const ollamaLocalAdapter: ServerAdapterModule = {
+  type: "ollama_local",
+  execute: ollamaExecute,
+  testEnvironment: ollamaTestEnvironment,
+  models: ollamaModels,
+  modelProfiles: ollamaModelProfiles,
+  listModels: () => listOllamaModels({}),
+  supportsLocalAgentJwt: false,
+  supportsInstructionsBundle: true,
+  instructionsPathKey: "instructionsFilePath",
+  requiresMaterializedRuntimeSkills: false,
+  agentConfigurationDoc: ollamaAgentConfigurationDoc,
+};
+
 const adaptersByType = new Map<string, ServerAdapterModule>();
 
 // For builtin types that are overridden by an external adapter, we keep the
@@ -460,6 +484,7 @@ function registerBuiltInAdapters() {
     cursorLocalAdapter,
     geminiLocalAdapter,
     openclawGatewayAdapter,
+    ollamaLocalAdapter,
     hermesLocalAdapter,
     processAdapter,
     httpAdapter,

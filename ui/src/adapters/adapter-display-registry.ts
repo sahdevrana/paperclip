@@ -98,6 +98,11 @@ const adapterDisplayMap: Record<string, AdapterDisplayInfo> = {
     description: "Local Cursor agent",
     icon: MousePointer2,
   },
+  ollama_local: {
+    label: "Ollama",
+    description: "Run Gemma, Qwen, Llama and other models via a local Ollama instance",
+    icon: Cpu,
+  },
   openclaw_gateway: {
     label: "OpenClaw Gateway",
     description: "Invoke OpenClaw via gateway protocol",
