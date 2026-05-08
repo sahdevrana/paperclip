@@ -68,6 +68,7 @@ export async function testEnvironment(
   }
 
   // Check model is available
+  let modelPulled = false;
   if (reachable) {
     try {
       const tagsRes = await fetch(`${baseUrl}/api/tags`, {
@@ -77,8 +78,8 @@ export async function testEnvironment(
         const body = (await tagsRes.json()) as { models?: Array<{ name: string }> };
         const available = (body.models ?? []).map((m) => m.name);
         const isKnownBuiltin = OLLAMA_BUILTIN_MODELS.some((m) => m.id === model);
-        const isPulled = available.some((name) => name === model || name.startsWith(`${model}:`));
-        if (isPulled) {
+        modelPulled = available.some((name) => name === model || name.startsWith(`${model}:`));
+        if (modelPulled) {
           checks.push({
             code: "ollama_model_available",
             level: "info",
@@ -90,7 +91,7 @@ export async function testEnvironment(
             level: "warn",
             message: `Model "${model}" is not pulled on this Ollama instance`,
             detail: available.length > 0 ? `Available models: ${available.slice(0, 6).join(", ")}` : null,
-            hint: `Run: ollama pull ${model}`,
+            hint: `Run: docker exec ollama ollama pull ${model}`,
           });
         }
       }
@@ -98,7 +99,8 @@ export async function testEnvironment(
       // non-fatal — model list is optional
     }
 
-    // Probe the OpenAI-compatible endpoint with a minimal chat request
+    // Probe the OpenAI-compatible endpoint only when the model is confirmed pulled
+    if (!modelPulled) return { adapterType: "ollama_local", status: summarizeStatus(checks), checks, testedAt };
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
