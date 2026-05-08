@@ -191,7 +191,7 @@ export async function testEnvironment(
         args,
         {
           cwd,
-          env,
+          env: targetIsRemote ? env : runtimeEnv,
           timeoutSec: helloProbeTimeoutSec,
           graceSec: 5,
           onLog: async () => { },

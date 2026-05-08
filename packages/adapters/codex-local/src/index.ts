@@ -45,18 +45,7 @@ export const models = [
   { id: "codex-mini-latest", label: "Codex Mini" },
 ];
 
-export const modelProfiles: AdapterModelProfileDefinition[] = [
-  {
-    key: "cheap",
-    label: "Cheap",
-    description: "Use the lowest-cost known Codex local model lane without changing the primary model.",
-    adapterConfig: {
-      model: "gpt-5.3-codex-spark",
-      modelReasoningEffort: "low",
-    },
-    source: "adapter_default",
-  },
-];
+export const modelProfiles: AdapterModelProfileDefinition[] = [];
 
 export const agentConfigurationDoc = `# codex_local agent configuration
 

@@ -283,6 +283,25 @@ function createRemarkWikiLinks(options: {
   };
 }
 
+const APP_ROUTE_PREFIXES = [
+  "/issues/", "/agents/", "/projects/", "/goals/", "/skills/",
+  "/company/", "/api/", "/auth/", "/settings/", "/execution-workspaces/",
+  "/workspaces/", "/plugins/", "/profile/", "/inbox/", "/routines/",
+  "/instance/",
+];
+
+function isLocalFilePath(href: string | null | undefined): boolean {
+  if (!href) return false;
+  if (!href.startsWith("/")) return false;
+  if (APP_ROUTE_PREFIXES.some((prefix) => href.startsWith(prefix))) return false;
+  const lastSegment = href.split("/").pop() ?? "";
+  return /\.[a-zA-Z0-9]{1,10}$/.test(lastSegment);
+}
+
+function localFileApiUrl(href: string): string {
+  return `/api/local-file?path=${encodeURIComponent(href)}`;
+}
+
 function isGitHubUrl(href: string | null | undefined): boolean {
   if (!href) return false;
   try {
@@ -603,6 +622,18 @@ export function MarkdownBody({
             style={{ ...mergeWrapStyle(linkStyle as React.CSSProperties | undefined), ...mentionChipInlineStyle(parsed) }}
           >
             {linkChildren}
+          </a>
+        );
+      }
+      if (isLocalFilePath(href)) {
+        return (
+          <a
+            href={localFileApiUrl(href!)}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={mergeWrapStyle(linkStyle as React.CSSProperties | undefined)}
+          >
+            {renderLinkBody(linkChildren, null, <ExternalLink aria-hidden="true" className="ml-1 inline h-3 w-3 align-[-0.125em]" />)}
           </a>
         );
       }

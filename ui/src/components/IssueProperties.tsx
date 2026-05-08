@@ -405,6 +405,8 @@ export function IssueProperties({
   const [monitorAtInput, setMonitorAtInput] = useState(() => toDateTimeLocalValue(issue.executionPolicy?.monitor?.nextCheckAt));
   const [monitorNotesInput, setMonitorNotesInput] = useState(issue.executionPolicy?.monitor?.notes ?? "");
   const [monitorServiceInput, setMonitorServiceInput] = useState(issue.executionPolicy?.monitor?.serviceName ?? "");
+  const [stageDecisionComment, setStageDecisionComment] = useState("");
+  const [stageDecisionPending, setStageDecisionPending] = useState<"approve" | "reject" | null>(null);
 
   const { data: session } = useQuery({
     queryKey: queryKeys.auth.session,
@@ -842,6 +844,27 @@ export function IssueProperties({
     }
     return `${stageLabel} pending${participantLabel ? ` with ${participantLabel}` : ""}`;
   })();
+
+  // Check if the current user is the active approver/reviewer awaiting action
+  const isCurrentUserActiveStageParticipant = (() => {
+    if (!currentUserId) return false;
+    if (issue.executionState?.status !== "pending") return false;
+    const participant = issue.executionState.currentParticipant;
+    return participant?.type === "user" && participant.userId === currentUserId;
+  })();
+  const activeStageType = isCurrentUserActiveStageParticipant ? issue.executionState?.currentStageType ?? null : null;
+
+  const handleStageDecision = (decision: "approve" | "reject") => {
+    if (!stageDecisionComment.trim()) return;
+    setStageDecisionPending(decision);
+    onUpdate(
+      decision === "approve"
+        ? { status: "done", comment: stageDecisionComment.trim() }
+        : { status: "in_progress", comment: stageDecisionComment.trim() },
+    );
+    setStageDecisionComment("");
+    setStageDecisionPending(null);
+  };
   useEffect(() => {
     setMonitorAtInput(toDateTimeLocalValue(issue.executionPolicy?.monitor?.nextCheckAt));
     setMonitorNotesInput(issue.executionPolicy?.monitor?.notes ?? "");
@@ -1959,6 +1982,40 @@ export function IssueProperties({
           <PropertyRow label="Execution">
             <span className="text-sm">{currentExecutionLabel}</span>
           </PropertyRow>
+        )}
+
+        {isCurrentUserActiveStageParticipant && activeStageType && (
+          <div className="rounded-lg border border-border/70 bg-muted/20 p-3 space-y-2">
+            <p className="text-xs font-medium text-foreground">
+              {activeStageType === "approval" ? "Your approval is required" : "Your review is required"}
+            </p>
+            <textarea
+              className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-xs outline-none resize-none placeholder:text-muted-foreground/50"
+              rows={2}
+              placeholder="Add a comment (required)..."
+              value={stageDecisionComment}
+              onChange={(e) => setStageDecisionComment(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="bg-green-700 hover:bg-green-600 text-white h-7 text-xs px-3"
+                disabled={!stageDecisionComment.trim() || stageDecisionPending !== null}
+                onClick={() => handleStageDecision("approve")}
+              >
+                {stageDecisionPending === "approve" ? "Approving…" : activeStageType === "approval" ? "Approve" : "Approve review"}
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-7 text-xs px-3"
+                disabled={!stageDecisionComment.trim() || stageDecisionPending !== null}
+                onClick={() => handleStageDecision("reject")}
+              >
+                {stageDecisionPending === "reject" ? "Requesting…" : "Request changes"}
+              </Button>
+            </div>
+          </div>
         )}
 
         {showScheduledRetryRow && scheduledRetryContent ? (
