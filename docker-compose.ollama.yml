@@ -1,0 +1,16 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - root_default
+
+networks:
+  root_default:
+    external: true
+
+volumes:
+  ollama_data:

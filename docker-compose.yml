@@ -1,13 +1,4 @@
 services:
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    restart: unless-stopped
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - root_default
-
   paperclip:
     build: .
     container_name: paperclip
@@ -22,9 +13,6 @@ services:
       - USER_UID=${USER_UID:-1000}
       - USER_GID=${USER_GID:-1000}
       - OLLAMA_API_KEY=${OLLAMA_API_KEY:-ollama}
-
-    depends_on:
-      - ollama
 
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -52,4 +40,3 @@ networks:
 
 volumes:
   paperclip_data:
-  ollama_data:
