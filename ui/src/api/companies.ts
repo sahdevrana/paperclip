@@ -58,4 +58,8 @@ export const companiesApi = {
     api.post<CompanyPortabilityPreviewResult>("/companies/import/preview", data),
   importBundle: (data: CompanyPortabilityImportRequest) =>
     api.post<CompanyPortabilityImportResult>("/companies/import", data),
+  getGitSshKey: (companyId: string) =>
+    api.get<{ publicKey: string | null }>(`/companies/${companyId}/git-ssh-key`),
+  generateGitSshKey: (companyId: string) =>
+    api.post<{ publicKey: string }>(`/companies/${companyId}/git-ssh-key`, {}),
 };

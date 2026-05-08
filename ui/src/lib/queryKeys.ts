@@ -3,6 +3,7 @@ export const queryKeys = {
     all: ["companies"] as const,
     detail: (id: string) => ["companies", id] as const,
     stats: ["companies", "stats"] as const,
+    gitSshKey: (companyId: string) => ["companies", companyId, "git-ssh-key"] as const,
   },
   companySkills: {
     list: (companyId: string) => ["company-skills", companyId] as const,

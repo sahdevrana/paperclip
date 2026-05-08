@@ -23,6 +23,8 @@ import {
   feedbackService,
   logActivity,
 } from "../services/index.js";
+import { secretService } from "../services/secrets.js";
+import { generateGitSshKeyPair, deriveGitSshPublicKey, GIT_SSH_KEY_SECRET_NAME } from "../services/git-ssh-key.js";
 import type { StorageService } from "../storage/types.js";
 import { assertBoard, assertCompanyAccess, assertInstanceAdmin, getActorInfo } from "./authz.js";
 
@@ -407,6 +409,38 @@ export function companyRoutes(db: Db, storage?: StorageService) {
       return;
     }
     res.json({ ok: true });
+  });
+
+  router.get("/:companyId/git-ssh-key", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const secrets = secretService(db);
+    const secret = await secrets.getByName(companyId, GIT_SSH_KEY_SECRET_NAME);
+    if (!secret) return res.json({ publicKey: null });
+    const privateKeyPem = await secrets.resolveSecretValue(companyId, secret.id, "latest");
+    const publicKey = deriveGitSshPublicKey(privateKeyPem, `paperclip-${companyId}`);
+    return res.json({ publicKey });
+  });
+
+  router.post("/:companyId/git-ssh-key", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const secrets = secretService(db);
+    const { privateKeyPem, publicKeyOpenSsh } = generateGitSshKeyPair(`paperclip-${companyId}`);
+    const existing = await secrets.getByName(companyId, GIT_SSH_KEY_SECRET_NAME);
+    if (existing) {
+      await secrets.rotate(existing.id, { value: privateKeyPem });
+    } else {
+      await secrets.create(companyId, {
+        name: GIT_SSH_KEY_SECRET_NAME,
+        provider: "local_encrypted",
+        value: privateKeyPem,
+        description: "Company git SSH private key for repository authentication",
+      });
+    }
+    return res.json({ publicKey: publicKeyOpenSsh });
   });
 
   return router;

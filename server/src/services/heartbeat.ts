@@ -64,6 +64,7 @@ import { getTelemetryClient } from "../telemetry.js";
 import { companySkillService } from "./company-skills.js";
 import { budgetService, type BudgetEnforcementScope } from "./budgets.js";
 import { secretService } from "./secrets.js";
+import { isGitSshUrl, withGitSshEnv, GIT_SSH_KEY_SECRET_NAME } from "./git-ssh-key.js";
 import { resolveDefaultAgentWorkspaceDir, resolveManagedProjectWorkspaceDir } from "../home-paths.js";
 import {
   buildHeartbeatRunIssueComment,
@@ -616,6 +617,7 @@ async function ensureManagedProjectWorkspace(input: {
   companyId: string;
   projectId: string;
   repoUrl: string | null;
+  gitSshPrivateKey?: string | null;
 }): Promise<{ cwd: string; warning: string | null }> {
   const cwd = resolveManagedProjectWorkspaceDir({
     companyId: input.companyId,
@@ -652,10 +654,17 @@ async function ensureManagedProjectWorkspace(input: {
   }
 
   try {
-    await execFile("git", ["clone", input.repoUrl, cwd], {
-      env: sanitizeRuntimeServiceBaseEnv(process.env),
-      timeout: MANAGED_WORKSPACE_GIT_CLONE_TIMEOUT_MS,
-    });
+    const baseEnv = sanitizeRuntimeServiceBaseEnv(process.env);
+    const runClone = (extraEnv?: NodeJS.ProcessEnv) =>
+      execFile("git", ["clone", input.repoUrl!, cwd], {
+        env: { ...baseEnv, ...extraEnv },
+        timeout: MANAGED_WORKSPACE_GIT_CLONE_TIMEOUT_MS,
+      });
+    if (isGitSshUrl(input.repoUrl) && input.gitSshPrivateKey) {
+      await withGitSshEnv(input.gitSshPrivateKey, (sshEnv) => runClone(sshEnv));
+    } else {
+      await runClone();
+    }
     return { cwd, warning: null };
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
@@ -3431,6 +3440,12 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       repoRef: readNonEmptyString(workspace.repoRef),
     }));
 
+    const gitSshPrivateKey = await (async () => {
+      const secret = await secretsSvc.getByName(agent.companyId, GIT_SSH_KEY_SECRET_NAME);
+      if (!secret) return null;
+      return secretsSvc.resolveSecretValue(agent.companyId, secret.id, "latest").catch(() => null);
+    })();
+
     if (projectWorkspaceRows.length > 0) {
       const preferredWorkspace = preferredProjectWorkspaceId
         ? projectWorkspaceRows.find((workspace) => workspace.id === preferredProjectWorkspaceId) ?? null
@@ -3451,6 +3466,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
               companyId: agent.companyId,
               projectId: workspaceProjectId ?? resolvedProjectId ?? workspace.projectId,
               repoUrl: readNonEmptyString(workspace.repoUrl),
+              gitSshPrivateKey,
             });
             projectCwd = managedWorkspace.cwd;
             managedWorkspaceWarning = managedWorkspace.warning;

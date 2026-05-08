@@ -1,5 +1,5 @@
 import { ChangeEvent, useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   DEFAULT_COMPANY_ATTACHMENT_MAX_BYTES,
   MAX_COMPANY_ATTACHMENT_MAX_BYTES,
@@ -11,7 +11,7 @@ import { accessApi } from "../api/access";
 import { assetsApi } from "../api/assets";
 import { queryKeys } from "../lib/queryKeys";
 import { Button } from "@/components/ui/button";
-import { Settings, Check, Download, Upload } from "lucide-react";
+import { Settings, Check, Download, Upload, Copy, KeyRound } from "lucide-react";
 import { CompanyPatternIcon } from "../components/CompanyPatternIcon";
 import {
   Field,
@@ -211,6 +211,30 @@ export function CompanySettings() {
       });
     }
   });
+
+  const gitSshKeyQuery = useQuery({
+    queryKey: queryKeys.companies.gitSshKey(selectedCompanyId ?? ""),
+    queryFn: () => companiesApi.getGitSshKey(selectedCompanyId!),
+    enabled: !!selectedCompanyId,
+  });
+
+  const generateSshKeyMutation = useMutation({
+    mutationFn: () => companiesApi.generateGitSshKey(selectedCompanyId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.companies.gitSshKey(selectedCompanyId!) });
+    },
+  });
+
+  const [sshKeyCopied, setSshKeyCopied] = useState(false);
+
+  function handleCopySshKey() {
+    const key = gitSshKeyQuery.data?.publicKey;
+    if (!key) return;
+    navigator.clipboard.writeText(key).then(() => {
+      setSshKeyCopied(true);
+      setTimeout(() => setSshKeyCopied(false), 2000);
+    });
+  }
 
   useEffect(() => {
     setBreadcrumbs([
@@ -533,6 +557,64 @@ export function CompanySettings() {
                 Import
               </a>
             </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Git Authentication */}
+      <div className="space-y-4">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Git Authentication
+        </div>
+        <div className="space-y-3 rounded-md border border-border px-4 py-4">
+          <div className="flex items-start gap-3">
+            <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+            <div className="flex-1 space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Generate an SSH key pair for this company. Add the public key to GitHub (or any Git host) once,
+                and all agents in this company can clone and push private repositories.
+              </p>
+              {gitSshKeyQuery.data?.publicKey ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 truncate rounded bg-muted px-2 py-1 text-xs font-mono">
+                      {gitSshKeyQuery.data.publicKey}
+                    </code>
+                    <Button size="sm" variant="outline" onClick={handleCopySshKey}>
+                      {sshKeyCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Add this public key to your GitHub org or repo under Settings → Deploy keys (read/write).
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No SSH key generated yet.
+                </p>
+              )}
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => generateSshKeyMutation.mutate()}
+                  disabled={generateSshKeyMutation.isPending}
+                >
+                  {generateSshKeyMutation.isPending
+                    ? "Generating..."
+                    : gitSshKeyQuery.data?.publicKey
+                      ? "Regenerate SSH Key"
+                      : "Generate SSH Key"}
+                </Button>
+              </div>
+              {generateSshKeyMutation.isError && (
+                <p className="text-xs text-destructive">
+                  {generateSshKeyMutation.error instanceof Error
+                    ? generateSshKeyMutation.error.message
+                    : "Failed to generate SSH key"}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
