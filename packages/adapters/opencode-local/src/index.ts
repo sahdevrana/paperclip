@@ -5,7 +5,7 @@ export const label = "OpenCode (local)";
 
 export const SANDBOX_INSTALL_COMMAND = "npm install -g opencode-ai";
 
-export const DEFAULT_OPENCODE_LOCAL_MODEL = "openai/gpt-5.2-codex";
+export const DEFAULT_OPENCODE_LOCAL_MODEL = "ollama/gemma4:31b";
 
 export function isValidOpenCodeModelId(value: unknown): value is string {
   if (typeof value !== "string") return false;
