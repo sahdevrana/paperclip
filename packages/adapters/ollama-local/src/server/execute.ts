@@ -1,6 +1,6 @@
 import type { AdapterExecutionContext, AdapterExecutionResult } from "@paperclipai/adapter-utils";
 import { asString, parseObject } from "@paperclipai/adapter-utils/server-utils";
-import { execute as codexExecute } from "@paperclipai/adapter-codex-local/server";
+import { execute as openCodeExecute } from "@paperclipai/adapter-opencode-local/server";
 import { DEFAULT_OLLAMA_BASE_URL, DEFAULT_OLLAMA_MODEL } from "../index.js";
 
 export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExecutionResult> {
@@ -10,7 +10,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const baseUrl = rawBaseUrl || DEFAULT_OLLAMA_BASE_URL;
   const configApiKey = asString(config.apiKey, "").trim();
   const apiKey = configApiKey || process.env.OLLAMA_API_KEY?.trim() || "ollama";
-  const model = asString(config.model, DEFAULT_OLLAMA_MODEL).trim() || DEFAULT_OLLAMA_MODEL;
+
+  // OpenCode requires provider/model format. Ensure the model is prefixed with "openai/"
+  // so OpenCode routes it through its OpenAI-compatible provider using OPENAI_BASE_URL.
+  const rawModel = asString(config.model, DEFAULT_OLLAMA_MODEL).trim() || DEFAULT_OLLAMA_MODEL;
+  const model = rawModel.startsWith("openai/") ? rawModel : `openai/${rawModel}`;
 
   const existingEnv = parseObject(config.env) as Record<string, unknown>;
   const ollamaEnv: Record<string, unknown> = {
@@ -25,5 +29,5 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     env: ollamaEnv,
   };
 
-  return codexExecute({ ...ctx, config: ollamaConfig });
+  return openCodeExecute({ ...ctx, config: ollamaConfig });
 }

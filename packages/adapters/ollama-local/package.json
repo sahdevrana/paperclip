@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "@paperclipai/adapter-utils": "workspace:*",
-    "@paperclipai/adapter-codex-local": "workspace:*"
+    "@paperclipai/adapter-opencode-local": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.6.0",

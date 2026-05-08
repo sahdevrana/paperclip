@@ -4,11 +4,11 @@ export const type = "ollama_local";
 export const label = "Ollama (local)";
 
 export const DEFAULT_OLLAMA_BASE_URL = "http://ollama:11434";
-export const DEFAULT_OLLAMA_MODEL = "gemma4:31b-cloud";
+export const DEFAULT_OLLAMA_MODEL = "openai/gemma4:31b-cloud";
 
 export const OLLAMA_BUILTIN_MODELS: AdapterModel[] = [
-  { id: "gemma4:31b-cloud", label: "Gemma 4 31B (Cloud)" },
-  { id: "qwen3.5:cloud", label: "Qwen 3.5 (Cloud)" },
+  { id: "openai/gemma4:31b-cloud", label: "Gemma 4 31B (Cloud)" },
+  { id: "openai/qwen3.5:cloud", label: "Qwen 3.5 (Cloud)" },
 ];
 
 export const modelProfiles: AdapterModelProfileDefinition[] = [];

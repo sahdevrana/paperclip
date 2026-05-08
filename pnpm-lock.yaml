@@ -199,9 +199,9 @@ importers:
 
   packages/adapters/ollama-local:
     dependencies:
-      '@paperclipai/adapter-codex-local':
+      '@paperclipai/adapter-opencode-local':
         specifier: workspace:*
-        version: link:../codex-local
+        version: link:../opencode-local
       '@paperclipai/adapter-utils':
         specifier: workspace:*
         version: link:../../adapter-utils
