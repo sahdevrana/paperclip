@@ -267,14 +267,14 @@ export function InviteLandingPage() {
 
   useEffect(() => {
     if (!companiesQuery.data || !inviteQuery.data?.companyId) return;
-    const isMember = companiesQuery.data.some(
-      (c) => c.id === inviteQuery.data!.companyId
-    );
+    const companyId = inviteQuery.data.companyId;
+    const isMember = companiesQuery.data.some((c) => c.id === companyId);
     if (isMember) {
       clearPendingInviteToken(token);
+      setSelectedCompanyId(companyId, { source: "manual" });
       navigate("/", { replace: true });
     }
-  }, [companiesQuery.data, inviteQuery.data, token, navigate]);
+  }, [companiesQuery.data, inviteQuery.data, token, navigate, setSelectedCompanyId]);
 
   const invite = inviteQuery.data;
   const isCheckingExistingMembership =
@@ -343,13 +343,20 @@ export function InviteLandingPage() {
       setError(null);
       clearPendingInviteToken(token);
       const asBootstrap = isBootstrapAcceptancePayload(payload);
+
+      if (!asBootstrap && invite?.companyId && isApprovedHumanJoinPayload(payload, showsAgentForm)) {
+        // Navigate first, then invalidate in the background so the user isn't
+        // stuck waiting for re-fetches before the route change fires.
+        setSelectedCompanyId(invite.companyId, { source: "manual" });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.auth.session });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
+        navigate("/", { replace: true });
+        return;
+      }
+
       setResult({ kind: asBootstrap ? "bootstrap" : "join", payload });
       await queryClient.invalidateQueries({ queryKey: queryKeys.auth.session });
       await queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
-      if (invite?.companyId && isApprovedHumanJoinPayload(payload, showsAgentForm)) {
-        setSelectedCompanyId(invite.companyId, { source: "manual" });
-        navigate("/", { replace: true });
-      }
     },
     onError: (err) => {
       setError(err instanceof Error ? err.message : "Failed to accept invite");
@@ -492,6 +499,57 @@ export function InviteLandingPage() {
     );
   }
 
+  // Check accept result BEFORE invite status guards so a successful accept is
+  // never blocked by the invite query re-fetching with updated join request state.
+  if (result?.kind === "bootstrap") {
+    return (
+      <div className="min-h-screen bg-zinc-950 px-6 py-12 text-zinc-100">
+        <div className="mx-auto max-w-md border border-zinc-800 bg-zinc-950 p-6">
+          <h1 className="text-lg font-semibold">Bootstrap complete</h1>
+          <div className="mt-4">
+            <Button asChild className="rounded-none">
+              <Link to="/">Open board</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (result?.kind === "join") {
+    const payload = result.payload as JoinRequest & {
+      claimSecret?: string;
+      claimApiKeyPath?: string;
+      onboarding?: Record<string, unknown>;
+    };
+    const claimSecret = typeof payload.claimSecret === "string" ? payload.claimSecret : null;
+    const claimApiKeyPath = typeof payload.claimApiKeyPath === "string" ? payload.claimApiKeyPath : null;
+    const onboardingTextUrl = readNestedString(payload.onboarding, ["textInstructions", "url"]);
+    const joinedNow = !showsAgentForm && payload.status === "approved";
+
+    // Auto-navigate when approved; the companies useEffect also covers this path
+    // but we trigger it here immediately after the result is set so it feels instant.
+    if (joinedNow) {
+      return (
+        <div className="mx-auto max-w-xl py-10 text-sm text-muted-foreground">
+          Joining {companyDisplayName}…
+        </div>
+      );
+    }
+
+    return (
+      <AwaitingJoinApprovalPanel
+        companyDisplayName={companyDisplayName}
+        companyLogoUrl={companyLogoUrl}
+        companyBrandColor={companyBrandColor}
+        invitedByUserName={invitedByUserName}
+        claimSecret={claimSecret}
+        claimApiKeyPath={claimApiKeyPath}
+        onboardingTextUrl={onboardingTextUrl}
+      />
+    );
+  }
+
   if (
     inviteJoinRequestStatus === "approved" &&
     inviteJoinRequestType === "human" &&
@@ -523,66 +581,6 @@ export function InviteLandingPage() {
           </p>
         </div>
       </div>
-    );
-  }
-
-  if (result?.kind === "bootstrap") {
-    return (
-      <div className="min-h-screen bg-zinc-950 px-6 py-12 text-zinc-100">
-        <div className="mx-auto max-w-md border border-zinc-800 bg-zinc-950 p-6">
-          <h1 className="text-lg font-semibold">Bootstrap complete</h1>
-          <div className="mt-4">
-            <Button asChild className="rounded-none">
-              <Link to="/">Open board</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (result?.kind === "join") {
-    const payload = result.payload as JoinRequest & {
-      claimSecret?: string;
-      claimApiKeyPath?: string;
-      onboarding?: Record<string, unknown>;
-    };
-    const claimSecret = typeof payload.claimSecret === "string" ? payload.claimSecret : null;
-    const claimApiKeyPath = typeof payload.claimApiKeyPath === "string" ? payload.claimApiKeyPath : null;
-    const onboardingTextUrl = readNestedString(payload.onboarding, ["textInstructions", "url"]);
-    const joinedNow = !showsAgentForm && payload.status === "approved";
-
-    return (
-      joinedNow ? (
-        <div className="min-h-screen bg-zinc-950 px-6 py-12 text-zinc-100">
-          <div className="mx-auto max-w-md border border-zinc-800 bg-zinc-950 p-6">
-            <div className="flex items-center gap-3">
-              <InviteCompanyLogo
-                companyDisplayName={companyDisplayName}
-                companyLogoUrl={companyLogoUrl}
-                companyBrandColor={companyBrandColor}
-                className="h-12 w-12 border border-zinc-800 rounded-none"
-              />
-              <h1 className="text-lg font-semibold">You joined the company</h1>
-            </div>
-            <div className="mt-4">
-              <Button asChild className="w-full rounded-none">
-                <Link to="/">Open board</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <AwaitingJoinApprovalPanel
-          companyDisplayName={companyDisplayName}
-          companyLogoUrl={companyLogoUrl}
-          companyBrandColor={companyBrandColor}
-          invitedByUserName={invitedByUserName}
-          claimSecret={claimSecret}
-          claimApiKeyPath={claimApiKeyPath}
-          onboardingTextUrl={onboardingTextUrl}
-        />
-      )
     );
   }
 
