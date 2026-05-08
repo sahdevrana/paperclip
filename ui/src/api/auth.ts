@@ -128,6 +128,14 @@ export const authApi = {
   updateProfile: async (input: UpdateCurrentUserProfile): Promise<CurrentUserProfile> =>
     authPatch("/profile", input, (payload) => currentUserProfileSchema.parse(payload)),
 
+  sendVerificationOtp: async (email: string) => {
+    await authPost("/email-otp/send-verification-otp", { email, type: "email-verification" });
+  },
+
+  verifyEmailOtp: async (email: string, otp: string) => {
+    await authPost("/email-otp/verify-email", { email, otp });
+  },
+
   signOut: async () => {
     await authPost("/sign-out", {});
   },

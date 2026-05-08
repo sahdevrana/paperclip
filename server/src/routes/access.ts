@@ -80,6 +80,7 @@ import {
   inspectBoardClaimChallenge
 } from "../board-claim.js";
 import { getStorageService } from "../storage/index.js";
+import { buildInviteEmail, sendMail } from "../services/mailer.js";
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -2716,6 +2717,7 @@ export function accessRoutes(
     humanRole?: "owner" | "admin" | "operator" | "viewer" | null;
     defaultsPayload?: Record<string, unknown> | null;
     agentMessage?: string | null;
+    invitedEmail?: string | null;
   }) {
     const normalizedAgentMessage =
       typeof input.agentMessage === "string"
@@ -2764,7 +2766,7 @@ export function accessRoutes(
       throw conflict("Failed to generate a unique invite token. Please retry.");
     }
 
-    return { token, created, normalizedAgentMessage };
+    return { token, created, normalizedAgentMessage, invitedEmail: input.invitedEmail ?? null };
   }
 
   async function getInviteCompanyBranding(
@@ -2892,14 +2894,15 @@ export function accessRoutes(
     async (req, res) => {
       const companyId = req.params.companyId as string;
       await assertCompanyPermission(req, companyId, "users:invite");
-      const { token, created, normalizedAgentMessage } =
+      const { token, created, normalizedAgentMessage, invitedEmail } =
         await createCompanyInviteForCompany({
           req,
           companyId,
           allowedJoinTypes: req.body.allowedJoinTypes,
           humanRole: req.body.humanRole ?? null,
           defaultsPayload: req.body.defaultsPayload ?? null,
-          agentMessage: req.body.agentMessage ?? null
+          agentMessage: req.body.agentMessage ?? null,
+          invitedEmail: req.body.invitedEmail ?? null,
         });
 
       await logActivity(db, {
@@ -2917,7 +2920,8 @@ export function accessRoutes(
           allowedJoinTypes: created.allowedJoinTypes,
           expiresAt: created.expiresAt.toISOString(),
           humanRole: extractInviteHumanRole(created),
-          hasAgentMessage: Boolean(normalizedAgentMessage)
+          hasAgentMessage: Boolean(normalizedAgentMessage),
+          hasInvitedEmail: Boolean(invitedEmail),
         }
       });
 
@@ -2928,6 +2932,24 @@ export function accessRoutes(
         created,
         companyBranding
       );
+
+      if (invitedEmail && inviteSummary.inviteUrl) {
+        const inviterName =
+          req.actor.type !== "agent" && req.actor.userId
+            ? await db
+                .select({ name: authUsers.name })
+                .from(authUsers)
+                .where(eq(authUsers.id, req.actor.userId))
+                .then((rows) => rows[0]?.name ?? null)
+            : null;
+        const emailContent = buildInviteEmail({
+          inviteUrl: inviteSummary.inviteUrl,
+          companyName: companyBranding.name,
+          invitedByUserName: inviterName,
+        });
+        void sendMail({ to: invitedEmail, ...emailContent });
+      }
+
       res.status(201).json({
         ...created,
         token,

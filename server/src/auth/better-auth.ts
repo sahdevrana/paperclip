@@ -1,6 +1,7 @@
 import type { Request, RequestHandler } from "express";
 import type { IncomingHttpHeaders } from "node:http";
 import { betterAuth } from "better-auth";
+import { emailOTP } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { toNodeHandler } from "better-auth/node";
 import type { Db } from "@paperclipai/db";
@@ -12,6 +13,7 @@ import {
 } from "@paperclipai/db";
 import type { Config } from "../config.js";
 import { resolvePaperclipInstanceId } from "../home-paths.js";
+import { buildOtpEmail, sendMail } from "../services/mailer.js";
 
 export type BetterAuthSessionUser = {
   id: string;
@@ -120,6 +122,17 @@ export function createBetterAuthInstance(db: Db, config: Config, trustedOrigins:
       requireEmailVerification: false,
       disableSignUp: config.authDisableSignUp,
     },
+    plugins: [
+      emailOTP({
+        otpLength: 6,
+        expiresIn: 600,
+        sendVerificationOnSignUp: false,
+        sendVerificationOTP: async ({ email, otp }) => {
+          const emailContent = buildOtpEmail({ otp, email });
+          await sendMail({ to: email, ...emailContent });
+        },
+      }),
+    ],
     advanced: buildBetterAuthAdvancedOptions({ disableSecureCookies: isHttpOnly }),
   };
 

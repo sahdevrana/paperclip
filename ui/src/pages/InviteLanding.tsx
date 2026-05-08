@@ -229,6 +229,9 @@ export function InviteLandingPage() {
   const [error, setError] = useState<string | null>(null);
   const [authFeedback, setAuthFeedback] = useState<AuthFeedback | null>(null);
   const [autoAcceptStarted, setAutoAcceptStarted] = useState(false);
+  const [otpStep, setOtpStep] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [otpFeedback, setOtpFeedback] = useState<string | null>(null);
 
   const healthQuery = useQuery({
     queryKey: queryKeys.health,
@@ -388,7 +391,24 @@ export function InviteLandingPage() {
         return;
       }
 
+      // For sign-up on a human invite, verify email via OTP before accepting
+      if (authMode === "sign_up" && !showsAgentForm && invite?.inviteType !== "bootstrap_ceo") {
+        try {
+          await authApi.sendVerificationOtp(email.trim());
+          setOtpStep(true);
+        } catch {
+          // OTP send failed (e.g. no SMTP configured) — skip OTP and accept directly
+          if (!showsAgentForm) {
+            acceptMutation.mutate();
+          }
+        }
+        return;
+      }
+
       if (!invite || invite.inviteType !== "bootstrap_ceo") {
+        if (!showsAgentForm) {
+          acceptMutation.mutate();
+        }
         return;
       }
 
@@ -408,6 +428,34 @@ export function InviteLandingPage() {
         setPassword("");
       }
       setAuthFeedback(nextFeedback);
+    },
+  });
+
+  const verifyOtpMutation = useMutation({
+    mutationFn: async () => {
+      await authApi.verifyEmailOtp(email.trim(), otp.trim());
+    },
+    onSuccess: () => {
+      setOtpFeedback(null);
+      setOtpStep(false);
+      if (!showsAgentForm) {
+        acceptMutation.mutate();
+      }
+    },
+    onError: () => {
+      setOtpFeedback("Invalid or expired code. Check the code and try again.");
+    },
+  });
+
+  const resendOtpMutation = useMutation({
+    mutationFn: async () => {
+      await authApi.sendVerificationOtp(email.trim());
+    },
+    onSuccess: () => {
+      setOtpFeedback("A new code was sent to your email.");
+    },
+    onError: () => {
+      setOtpFeedback("Failed to resend the code. Try again.");
     },
   });
 
@@ -649,6 +697,59 @@ export function InviteLandingPage() {
                 >
                   {acceptMutation.isPending ? "Working..." : joinButtonLabel}
                 </Button>
+              </div>
+            ) : otpStep ? (
+              <div className="space-y-5">
+                <div>
+                  <h2 className="text-lg font-semibold">Verify your email</h2>
+                  <p className="mt-1 text-sm text-zinc-400">
+                    We sent a 6-digit code to <span className="text-zinc-200">{email.trim()}</span>. Enter it below to continue.
+                  </p>
+                </div>
+                <form
+                  className="space-y-4"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (verifyOtpMutation.isPending || otp.trim().length === 0) return;
+                    verifyOtpMutation.mutate();
+                  }}
+                >
+                  <label className="block text-sm">
+                    <span className="mb-1 block text-zinc-400">Verification code</span>
+                    <input
+                      className={`${fieldClassName} tracking-widest text-center text-lg`}
+                      value={otp}
+                      onChange={(event) => {
+                        setOtp(event.target.value.replace(/\D/g, "").slice(0, 6));
+                        setOtpFeedback(null);
+                      }}
+                      maxLength={6}
+                      inputMode="numeric"
+                      autoFocus
+                      placeholder="000000"
+                    />
+                  </label>
+                  {otpFeedback ? (
+                    <p className={`text-xs ${otpFeedback.startsWith("A new") ? "text-amber-300" : "text-red-400"}`}>
+                      {otpFeedback}
+                    </p>
+                  ) : null}
+                  <Button
+                    type="submit"
+                    className="w-full rounded-none"
+                    disabled={verifyOtpMutation.isPending || otp.trim().length !== 6}
+                  >
+                    {verifyOtpMutation.isPending ? "Verifying..." : "Verify and continue"}
+                  </Button>
+                </form>
+                <button
+                  type="button"
+                  className="text-xs text-zinc-500 hover:text-zinc-300"
+                  disabled={resendOtpMutation.isPending}
+                  onClick={() => resendOtpMutation.mutate()}
+                >
+                  {resendOtpMutation.isPending ? "Sending..." : "Resend code"}
+                </button>
               </div>
             ) : requiresHumanAccount ? (
               <div className="space-y-5">
