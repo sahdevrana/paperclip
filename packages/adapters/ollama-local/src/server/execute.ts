@@ -12,8 +12,6 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const apiKey = configApiKey || process.env.OLLAMA_API_KEY?.trim() || "ollama";
   const model = asString(config.model, DEFAULT_OLLAMA_MODEL).trim() || DEFAULT_OLLAMA_MODEL;
 
-  // Merge Ollama connection vars into the env config so codex execute
-  // passes them through to the process via refreshPaperclipWorkspaceEnvForExecution.
   const existingEnv = parseObject(config.env) as Record<string, unknown>;
   const ollamaEnv: Record<string, unknown> = {
     ...existingEnv,

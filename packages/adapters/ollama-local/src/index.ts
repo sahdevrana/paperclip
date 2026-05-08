@@ -30,6 +30,7 @@ Ollama exposes an OpenAI-compatible API at \`<baseUrl>/v1\`.
 
 - **apiKey** \`string\` — Ollama API key. Use any non-empty string if your
   Ollama instance does not require authentication (e.g. \`"ollama"\`).
+  Falls back to the \`OLLAMA_API_KEY\` environment variable.
 
 - **model** \`string\` — Ollama model tag to use.
   Examples: \`gemma4:31b-cloud\`, \`qwen3.5:cloud\`, \`qwen2.5-coder:32b\`
