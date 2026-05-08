@@ -406,9 +406,7 @@ export function InviteLandingPage() {
           setOtpStep(true);
         } catch {
           // OTP send failed (e.g. no SMTP configured) — skip OTP and accept directly
-          if (!showsAgentForm) {
-            acceptMutation.mutate();
-          }
+          acceptMutation.mutate();
         }
         return;
       }
