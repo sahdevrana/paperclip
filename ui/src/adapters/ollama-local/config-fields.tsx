@@ -26,12 +26,12 @@ export function OllamaLocalConfigFields({
     <>
       <Field
         label="Ollama base URL"
-        hint="Base URL of your Ollama instance. Default: http://localhost:11434"
+        hint="Base URL of your Ollama instance. Default: http://ollama:11434 (Docker service name)"
       >
         <input
           type="text"
           className={inputClass}
-          placeholder="http://localhost:11434"
+          placeholder="http://ollama:11434"
           value={
             isCreate
               ? (ollamaValues!.baseUrl ?? "")

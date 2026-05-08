@@ -3,16 +3,12 @@ import type { AdapterModel, AdapterModelProfileDefinition } from "@paperclipai/a
 export const type = "ollama_local";
 export const label = "Ollama (local)";
 
-export const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434";
-export const DEFAULT_OLLAMA_MODEL = "gemma4:27b";
+export const DEFAULT_OLLAMA_BASE_URL = "http://ollama:11434";
+export const DEFAULT_OLLAMA_MODEL = "gemma4:31b-cloud";
 
 export const OLLAMA_BUILTIN_MODELS: AdapterModel[] = [
   { id: "gemma4:31b-cloud", label: "Gemma 4 31B (Cloud)" },
   { id: "qwen3.5:cloud", label: "Qwen 3.5 (Cloud)" },
-  { id: "gemma4:27b", label: "Gemma 4 27B" },
-  { id: "qwen2.5-coder:32b", label: "Qwen 2.5 Coder 32B" },
-  { id: "llama3.3:70b", label: "Llama 3.3 70B" },
-  { id: "mistral:7b", label: "Mistral 7B" },
 ];
 
 export const modelProfiles: AdapterModelProfileDefinition[] = [];
