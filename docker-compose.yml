@@ -1,0 +1,41 @@
+services:
+  paperclip:
+    build: .
+    container_name: paperclip
+    restart: unless-stopped
+    ports:
+      - "${PAPERCLIP_PORT:-3100}:3100"
+
+    env_file:
+      - .env
+
+    environment:
+      - USER_UID=${USER_UID:-1000}
+      - USER_GID=${USER_GID:-1000}
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    volumes:
+      - paperclip_data:/paperclip
+
+    networks:
+      - root_default
+
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=root_default
+      - traefik.http.services.paperclip.loadbalancer.server.port=${PAPERCLIP_PORT:-3100}
+      - "traefik.http.routers.paperclip.rule=Host(`${PAPERCLIP_SUBDOMAIN:-paperclip}.${DOMAIN_NAME}`)"
+      - traefik.http.routers.paperclip.entrypoints=web,websecure
+      - traefik.http.routers.paperclip.tls=true
+      - traefik.http.routers.paperclip.tls.certresolver=mytlschallenge
+      - traefik.http.routers.paperclip.service=paperclip
+      - traefik.http.routers.paperclip.priority=100
+
+networks:
+  root_default:
+    external: true
+
+volumes:
+  paperclip_data:
